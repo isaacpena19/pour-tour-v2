@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pour-tour
+    runtime: node
+    plan: free
+    buildCommand: echo "no build"
+    startCommand: node server.js
+    envVars:
+      - key: ADMIN_PIN
+        sync: false
