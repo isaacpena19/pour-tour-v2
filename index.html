@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Pour Tour – Live Scoreboard</title>
+<link rel="icon" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<style>
+:root{--lime:#c8f400;--black:#000;--panel:#121212;--line:#2a2a2a;--white:#f6f6f6;--mute:#9a9a9a;--amber:#f5a300;
+--display:"Barlow Condensed","Arial Narrow",Impact,sans-serif;--body:Barlow,system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+html{background:var(--black);color:var(--white);font:400 16px/1.45 var(--body)}
+body{max-width:720px;margin:0 auto;padding:env(safe-area-inset-top) 14px calc(96px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+input,select{font-size:16px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+header{text-align:center;padding:8px 0 4px}
+header img{width:min(170px,48vw);display:block;margin:0 auto}
+.live{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--mute)}
+.live i{width:9px;height:9px;border-radius:50%;background:var(--mute)}
+.live.on i{background:var(--lime);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px #c8f40000;opacity:.5}0%{box-shadow:0 0 0 0 #c8f40088}}
+@media(prefers-reduced-motion:reduce){.live.on i{animation:none}}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;background:#000e;backdrop-filter:blur(10px);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav::before{content:none}
+nav button{flex:1;background:none;border:0;padding:16px 4px;min-height:56px;font:italic 800 21px/1 var(--display);color:var(--mute);border-top:4px solid transparent;margin-top:-2px}
+nav button[aria-selected=true]{color:var(--lime);border-color:var(--lime)}
+main{margin-top:10px}
+h2{font:italic 800 34px/1 var(--display);margin:6px 0 12px}
+.muted{color:var(--mute)}
+.empty{border:2px dashed var(--line);border-radius:14px;padding:28px 18px;text-align:center}
+.row{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.row.lead{border-color:var(--lime)}
+.row>button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;width:100%;padding:14px;cursor:pointer}
+.row>button:focus-visible{outline:3px solid var(--lime);outline-offset:-3px}
+.rk{font:italic 800 30px/1 var(--display);color:var(--mute);text-align:center}
+.lead .rk{color:var(--lime)}
+.tn{font:italic 800 24px/1.05 var(--display)}
+.pl{font-size:14px;color:var(--mute)}
+.sc{text-align:right}
+.tp{font:italic 800 38px/1 var(--display)}
+.tp.under{color:var(--lime)}.tp.over{color:var(--amber)}
+.th{font-size:13px;color:var(--mute)}
+.card{padding:0 14px 14px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;text-align:center;min-width:460px}
+td,th{padding:6px 2px;border-bottom:1px solid var(--line);font-weight:400}
+th{color:var(--mute);font-size:12px}
+.b{color:var(--lime);font-weight:600}.o{color:var(--amber)}
+.teams{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{border:2px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;font-weight:600}
+.chip[aria-pressed=true]{background:var(--lime);border-color:var(--lime);color:#000}
+.hole{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.hole b{font:italic 800 48px/1 var(--display)}
+.arrow{width:56px;height:56px;border-radius:50%;border:2px solid var(--line);background:var(--panel);font-size:24px}
+.step{display:grid;grid-template-columns:84px 1fr 84px;gap:12px;align-items:center;margin:18px 0}
+.step button{height:84px;border-radius:18px;border:2px solid var(--lime);background:none;color:var(--lime);font:italic 800 48px/1 var(--display)}
+.step output{text-align:center;font:italic 800 120px/1 var(--display)}
+.step small{display:block;font:400 14px var(--body);color:var(--mute)}
+.btn.save{position:sticky;bottom:calc(70px + env(safe-area-inset-bottom))}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:16px;background:var(--lime);color:#000;font:italic 800 26px/1 var(--display)}
+.btn.ghost{background:none;border:2px solid var(--line);color:var(--white);font-size:20px;margin-top:10px}
+.btn.warn{border-color:var(--amber);color:var(--amber)}
+.strip{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin-top:20px}
+.strip button{min-height:34px;font-size:14px}
+.strip button{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-weight:600}
+.strip button[aria-current=true]{border:2px solid var(--white)}
+label{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
+input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.trow{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-bottom:14px}
+.trow input:first-child{grid-column:1/3}.trow button{grid-row:1;grid-column:3;height:100%}
+.lnk{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;word-break:break-all;font-size:14px}
+.lnk b{font:italic 800 22px var(--display);display:block}.lnk .code{color:var(--lime);font-weight:600;letter-spacing:.08em}
+.lnk button{margin-top:8px;border:1px solid var(--lime);color:var(--lime);background:none;border-radius:10px;padding:10px 14px}
+@media(min-width:560px){.step output{font-size:140px}}
+.trow button{background:none;border:1px solid var(--line);border-radius:10px;color:var(--amber)}
+.pars{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+.pars input{padding:8px 0;text-align:center}
+.msg{margin-top:10px;min-height:1.4em;color:var(--lime)}
+</style>
+</head>
+<body>
+<header>
+  <img src="/logo.png" alt="Pour Tour">
+  <div class="live" id="live"><i></i><span>Connecting…</span></div>
+</header>
+<nav role="tablist">
+  <button role="tab" data-t="board">Leaderboard</button>
+  <button role="tab" data-t="score">Enter score</button>
+  <button role="tab" data-t="setup">Setup</button>
+</nav>
+<main id="main"></main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S = null, tab = 'board', sel = localStorage.getItem('pt-team'), hole = 0, draft = null;
+const open = new Set();
+let setupDraft = null, setupMsg = '', links = null, joinMsg = '';
+let myKey = localStorage.getItem('pt-key'), myTeam = null, isAdmin = !!sessionStorage.getItem('pt-ok');
+
+const fmt = n => n === 0 ? 'E' : n > 0 ? '+' + n : String(n);
+function stats(t) {
+  let total = 0, par = 0, thru = 0;
+  t.scores.forEach((s, i) => { if (s != null) { total += s; par += S.pars[i]; thru++; } });
+  return { total, thru, toPar: total - par };
+}
+const cls = n => n < 0 ? 'under' : n > 0 ? 'over' : '';
+const cell = (s, p) => s == null ? '–' : `<span class="${s < p ? 'b' : s > p ? 'o' : ''}">${s}</span>`;
+
+function scorecard(t) {
+  const n = S.pars.length, half = n > 9 ? [[0, 9], [9, n]] : [[0, n]];
+  return half.map(([a, b]) => {
+    const idx = [...Array(b - a)].map((_, i) => a + i);
+    const sum = f => idx.reduce((x, i) => x + f(i), 0);
+    const played = idx.filter(i => t.scores[i] != null);
+    return `<table><tr><th>Hole</th>${idx.map(i => `<th>${i + 1}</th>`).join('')}<th>Tot</th></tr>
+      <tr><th>Par</th>${idx.map(i => `<td>${S.pars[i]}</td>`).join('')}<td>${sum(i => S.pars[i])}</td></tr>
+      <tr><th>Score</th>${idx.map(i => `<td>${cell(t.scores[i], S.pars[i])}</td>`).join('')}<td>${played.length ? sum(i => t.scores[i] || 0) : '–'}</td></tr></table>`;
+  }).join('');
+}
+
+function board() {
+  if (!S.teams.length) return `<div class="empty"><h2>No teams yet</h2><p class="muted">Open Setup to add your pairs and the scoreboard goes live.</p></div>`;
+  const rows = S.teams.map(t => ({ t, ...stats(t) }))
+    .sort((a, b) => (b.thru > 0) - (a.thru > 0) || a.toPar - b.toPar || b.thru - a.thru);
+  let rank = 0, prev = null;
+  return `<h2>${esc(S.name)} standings</h2>` + rows.map((r, i) => {
+    if (r.thru && (prev === null || r.toPar !== prev)) rank = i + 1;
+    prev = r.thru ? r.toPar : prev;
+    const isOpen = open.has(r.t.id);
+    return `<div class="row ${i === 0 && r.thru ? 'lead' : ''}">
+      <button data-open="${r.t.id}" aria-expanded="${isOpen}">
+        <span class="rk">${r.thru ? rank : '–'}</span>
+        <span><span class="tn">${esc(r.t.name)}</span><br><span class="pl">${esc(r.t.players.filter(Boolean).join(' & '))}</span></span>
+        <span class="sc"><span class="tp ${cls(r.toPar)}">${r.thru ? fmt(r.toPar) : '–'}</span><br><span class="th">${r.thru ? `${r.total} strokes · thru ${r.thru}` : 'not started'}</span></span>
+      </button>${isOpen ? `<div class="card">${scorecard(r.t)}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function score() {
+  if (!S.teams.length) return `<div class="empty"><h2>No teams yet</h2><p class="muted">Add teams in Setup first.</p></div>`;
+  if (!isAdmin && !S.teams.find(t => t.id === myTeam)) return `<h2>Team login</h2><p class="muted">Open the link your captain shared, or type your team code.</p>
+    <label for="code">Team code</label><input id="code" autocapitalize="characters" autocomplete="off" placeholder="e.g. 4F9A2C">
+    <button class="btn" style="margin-top:14px" data-join>Start scoring</button><p class="msg" role="status" style="color:var(--amber)">${esc(joinMsg)}</p>`;
+  if (!isAdmin) sel = myTeam;
+  if (!S.teams.find(t => t.id === sel)) { sel = S.teams[0].id; draft = null; }
+  const t = S.teams.find(t => t.id === sel), par = S.pars[hole], cur = t.scores[hole];
+  if (draft == null) draft = cur ?? par;
+  return `${isAdmin ? '' : `<h2>${esc(t.name)}</h2>`}${!isAdmin ? '' : '<div class="teams">'+S.teams.map(x => `<button class="chip" data-team="${x.id}" aria-pressed="${x.id === sel}">${esc(x.name)}</button>`).join('')+'</div>'}
+  <p class="pl">${esc(t.players.filter(Boolean).join(' & '))}</p>
+  <div class="hole"><button class="arrow" data-hole="-1" aria-label="Previous hole">‹</button>
+    <div style="text-align:center"><b>Hole ${hole + 1}</b><br><span class="muted">Par ${par}${cur != null ? ' · saved ' + cur : ''}</span></div>
+    <button class="arrow" data-hole="1" aria-label="Next hole">›</button></div>
+  <div class="step"><button data-d="-1" aria-label="One fewer stroke">−</button><output aria-live="polite">${draft}<small>${draft === par ? 'par' : draft < par ? (draft === 1 ? 'hole in one' : fmt(draft - par) + ' under') : fmt(draft - par) + ' over'}</small></output><button data-d="1" aria-label="One more stroke">+</button></div>
+  <button class="btn save" data-save>Save hole ${hole + 1}</button>
+  ${cur != null ? '<button class="btn ghost warn" data-clear>Clear this hole</button>' : ''}
+  <div class="strip">${S.pars.map((p, i) => { const s = t.scores[i]; return `<button data-go="${i}" ${i === hole ? 'aria-current="true"' : ''} class="${s == null ? '' : s < p ? 'b' : s > p ? 'o' : ''}">${s ?? i + 1}</button>`; }).join('')}</div>`;
+}
+
+function setup() {
+  if (!setupDraft) setupDraft = JSON.parse(JSON.stringify({ name: S.name, pars: S.pars, teams: S.teams.map(t => ({ id: t.id, name: t.name, players: t.players })) }));
+  const d = setupDraft;
+  return `<h2>Setup</h2>
+  <label for="pin">Admin PIN</label><input id="pin" type="password" value="${esc(sessionStorage.getItem('pt-pin') || '')}" autocomplete="off">
+  <label for="ename">Event name</label><input id="ename" value="${esc(d.name)}">
+  <label>Teams (team name, player 1, player 2)</label>
+  ${d.teams.map((t, i) => `<div class="trow"><input data-f="name" data-i="${i}" value="${esc(t.name)}" aria-label="Team name"><input data-f="p0" data-i="${i}" value="${esc(t.players[0])}" aria-label="Player 1"><input data-f="p1" data-i="${i}" value="${esc(t.players[1])}" aria-label="Player 2"><button data-rm="${i}" aria-label="Remove team">✕</button></div>`).join('')}
+  <button class="btn ghost" data-add>Add a team</button>
+  <label>Holes and par (tap a hole to change)</label>
+  <div class="btn-row" style="display:flex;gap:8px;margin-bottom:8px"><button class="chip" data-holes="9" aria-pressed="${d.pars.length === 9}">9 holes</button><button class="chip" data-holes="18" aria-pressed="${d.pars.length === 18}">18 holes</button></div>
+  <div class="pars">${d.pars.map((p, i) => `<input type="number" min="3" max="6" data-par="${i}" value="${p}" aria-label="Par for hole ${i + 1}">`).join('')}</div>
+  <button class="btn" style="margin-top:20px" data-savesetup>Save setup</button>
+  <h2 style="margin-top:28px">Team links</h2><p class="muted">Each team can only enter its own score. Send each team its link. Save setup first if you added teams.</p>
+  <button class="btn ghost" data-links>Show team links</button>
+  ${(links || []).map(l => { const u = location.origin + '/?k=' + l.key; return `<div class="lnk"><b>${esc(l.name)}</b>Code <span class="code">${l.key}</span><br>${esc(u)}<br><button data-copy="${esc(u)}">Copy link</button></div>`; }).join('')}
+  <button class="btn ghost warn" data-reset>Clear all scores</button>
+  <p class="msg" role="status">${esc(setupMsg)}</p>`;
+}
+
+function render() {
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === tab));
+  if (!S) return;
+  $('#main').innerHTML = tab === 'board' ? board() : tab === 'score' ? score() : setup();
+}
+
+async function post(url, data) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  if (!r.ok) throw new Error((await r.json()).error || 'Failed');
+  return r.json();
+}
+const syncSetup = () => { const d = setupDraft; if (!d || tab !== 'setup') return;
+  d.name = $('#ename').value; document.querySelectorAll('[data-f]').forEach(el => { const t = d.teams[el.dataset.i], f = el.dataset.f;
+    if (f === 'name') t.name = el.value; else t.players[+f[1]] = el.value; });
+  document.querySelectorAll('[data-par]').forEach(el => d.pars[el.dataset.par] = +el.value || 4); };
+const unlock = pin => { sessionStorage.setItem('pt-pin', pin); sessionStorage.setItem('pt-ok', '1'); isAdmin = true; };
+const auth = () => isAdmin ? { pin: sessionStorage.getItem('pt-pin') } : { key: myKey };
+async function whoami(key) {
+  try { const r = await post('/api/whoami', { key }); myKey = key.trim().toUpperCase(); localStorage.setItem('pt-key', myKey); myTeam = r.teamId; sel = myTeam; draft = null; joinMsg = ''; return true; }
+  catch { myKey = null; localStorage.removeItem('pt-key'); return false; } }
+const saveSetup = async reset => {
+  syncSetup(); const pin = $('#pin').value; sessionStorage.setItem('pt-pin', pin);
+  try { S = await post('/api/setup', { pin, reset, name: setupDraft.name, pars: setupDraft.pars, teams: setupDraft.teams });
+    unlock(pin); setupDraft = null; setupMsg = reset ? 'All scores cleared.' : 'Setup saved.'; }
+  catch (e) { setupMsg = e.message === 'Wrong PIN' ? 'Wrong PIN. Check with whoever set up the site.' : 'Could not save. Try again.'; }
+  render(); };
+
+document.addEventListener('click', async e => {
+  const el = e.target.closest('button'); if (!el) return; const D = el.dataset;
+  if (D.t) { syncSetup(); tab = D.t; render(); }
+  else if (D.open) { open.has(D.open) ? open.delete(D.open) : open.add(D.open); render(); }
+  else if (D.team) { sel = D.team; localStorage.setItem('pt-team', sel); draft = null; render(); }
+  else if (D.hole) { hole = (hole + +D.hole + S.pars.length) % S.pars.length; draft = null; render(); }
+  else if (D.go) { hole = +D.go; draft = null; render(); }
+  else if (D.d) { draft = Math.min(20, Math.max(1, draft + +D.d)); render(); }
+  else if (el.hasAttribute('data-save')) { try { await post('/api/score', { teamId: sel, hole, strokes: draft, ...auth() }); hole = Math.min(hole + 1, S.pars.length - 1); draft = null; } catch {} render(); }
+  else if (el.hasAttribute('data-clear')) { await post('/api/score', { teamId: sel, hole, strokes: null, ...auth() }); draft = null; render(); }
+  else if (el.hasAttribute('data-add')) { syncSetup(); setupDraft.teams.push({ name: 'Team ' + (setupDraft.teams.length + 1), players: ['', ''] }); render(); }
+  else if (D.rm) { syncSetup(); setupDraft.teams.splice(+D.rm, 1); render(); }
+  else if (D.holes) { syncSetup(); const n = +D.holes, p = setupDraft.pars; setupDraft.pars = [...Array(n)].map((_, i) => p[i] || 4); render(); }
+  else if (el.hasAttribute('data-join')) { if (!(await whoami($('#code').value))) joinMsg = 'Code not found. Check it and try again.'; render(); }
+  else if (el.hasAttribute('data-links')) { syncSetup(); const pin = $('#pin').value; try { links = await post('/api/keys', { pin }); unlock(pin); setupMsg = ''; } catch { setupMsg = 'Wrong PIN. Check with whoever set up the site.'; } render(); }
+  else if (D.copy) { try { await navigator.clipboard.writeText(D.copy); el.textContent = 'Copied'; } catch { prompt('Copy this link:', D.copy); } }
+  else if (el.hasAttribute('data-savesetup')) saveSetup(false);
+  else if (el.hasAttribute('data-reset')) { if (confirm('Clear every score? This cannot be undone.')) saveSetup(true); }
+});
+
+function connect() {
+  const es = new EventSource('/api/stream'), live = $('#live');
+  es.onmessage = e => { S = JSON.parse(e.data); live.className = 'live on'; live.lastElementChild.textContent = 'Live';
+    if (tab !== 'setup') render(); else if (!$('#main').innerHTML) render(); };
+  es.onerror = () => { live.className = 'live'; live.lastElementChild.textContent = 'Reconnecting…'; };
+}
+(async () => {
+  const k = new URLSearchParams(location.search).get('k') || myKey;
+  if (k) { if (await whoami(k) && new URLSearchParams(location.search).get('k')) tab = 'score'; history.replaceState(null, '', '/'); }
+  render();
+})();
+connect();
+</script>
+</body>
+</html>
