@@ -5,10 +5,13 @@ const FILE = path.join(process.env.DATA_DIR || __dirname, 'data.json');
 let state = { name: 'Pour Tour', pars: Array(18).fill(4), teams: [] };
 try { state = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch {}
 const clients = new Set();
+const gen = () => crypto.randomBytes(3).toString('hex').toUpperCase();
+state.teams.forEach(t => { t.key = t.key || gen(); });
+const pub = () => ({ ...state, teams: state.teams.map(({ key, ...t }) => t) });
 
 function save() {
   try { fs.writeFileSync(FILE, JSON.stringify(state)); } catch (e) { console.error('save failed', e.message); }
-  const msg = `data: ${JSON.stringify(state)}\n\n`;
+  const msg = `data: ${JSON.stringify(pub())}\n\n`;
   clients.forEach(c => c.write(msg));
 }
 const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
@@ -17,17 +20,28 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.png': 'image/png' };
 
 http.createServer(async (req, res) => {
   const url = req.url.split('?')[0];
-  if (url === '/api/state') return send(res, 200, state);
+  if (url === '/api/state') return send(res, 200, pub());
+  if (url === '/api/whoami' && req.method === 'POST') {
+    const { key } = await body(req);
+    const t = key && state.teams.find(t => t.key === String(key).trim().toUpperCase());
+    return t ? send(res, 200, { teamId: t.id }) : send(res, 404, { error: 'Code not found' });
+  }
+  if (url === '/api/keys' && req.method === 'POST') {
+    const { pin } = await body(req);
+    if (pin !== PIN) return send(res, 401, { error: 'Wrong PIN' });
+    return send(res, 200, state.teams.map(t => ({ id: t.id, name: t.name, key: t.key })));
+  }
   if (url === '/api/stream') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write(`data: ${JSON.stringify(state)}\n\n`);
+    res.write(`data: ${JSON.stringify(pub())}\n\n`);
     clients.add(res);
     const ping = setInterval(() => res.write(': ping\n\n'), 25000);
     return req.on('close', () => { clearInterval(ping); clients.delete(res); });
   }
   if (url === '/api/score' && req.method === 'POST') {
-    const { teamId, hole, strokes } = await body(req);
+    const { teamId, hole, strokes, key, pin } = await body(req);
     const t = state.teams.find(t => t.id === teamId);
+    if (t && pin !== PIN && !(key && String(key).trim().toUpperCase() === t.key)) return send(res, 401, { error: 'Not your team' });
     const ok = strokes === null || (Number.isInteger(strokes) && strokes >= 1 && strokes <= 20);
     if (!t || !Number.isInteger(hole) || hole < 0 || hole >= state.pars.length || !ok) return send(res, 400, { error: 'Bad score' });
     t.scores[hole] = strokes; save();
@@ -44,6 +58,7 @@ http.createServer(async (req, res) => {
         const prev = old.get(t.id);
         return {
           id: prev ? prev.id : crypto.randomBytes(4).toString('hex'),
+          key: prev ? prev.key : gen(),
           name: String(t.name || 'Team').slice(0, 30),
           players: [String(t.players?.[0] || '').slice(0, 24), String(t.players?.[1] || '').slice(0, 24)],
           scores: pars.map((_, i) => (b.reset || !prev ? null : prev.scores[i] ?? null)),
@@ -51,7 +66,7 @@ http.createServer(async (req, res) => {
       }),
     };
     save();
-    return send(res, 200, state);
+    return send(res, 200, pub());
   }
   const file = url === '/' ? 'index.html' : url.slice(1);
   const p = path.join(__dirname, 'public', file);
